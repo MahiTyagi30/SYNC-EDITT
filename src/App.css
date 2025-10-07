@@ -143,3 +143,18 @@ footer a:hover {
     line-height: 1.6;
     padding-top: 20px;
 }
+.langSelect {
+    width: 100%;
+    padding: 6px;
+    border-radius: 8px;
+    background: #282a36;
+    color: #fff;
+    border: 1px solid #555;
+    font-size: 14px;
+}
+
+.languageSelector h4 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #ffb03b;
+}

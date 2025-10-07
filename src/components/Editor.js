@@ -1,57 +1,69 @@
-import React, { useEffect, useRef } from 'react';
-import Codemirror from 'codemirror';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/theme/dracula.css';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/addon/edit/closetag';
-import 'codemirror/addon/edit/closebrackets';
+import React, { useEffect, useRef, useState } from 'react';
+import MonacoEditor from '@monaco-editor/react';
 import ACTIONS from '../Actions';
 
-const Editor = ({ socketRef, roomId, onCodeChange }) => {
+const Editor = ({ socketRef, roomId, onCodeChange, language }) => {
+    const [value, setValue] = useState('');
     const editorRef = useRef(null);
-    useEffect(() => {
-        async function init() {
-            editorRef.current = Codemirror.fromTextArea(
-                document.getElementById('realtimeEditor'),
-                {
-                    mode: { name: 'javascript', json: true },
-                    theme: 'dracula',
-                    autoCloseTags: true,
-                    autoCloseBrackets: true,
-                    lineNumbers: true,
-                }
-            );
 
-            editorRef.current.on('change', (instance, changes) => {
-                const { origin } = changes;
-                const code = instance.getValue();
-                onCodeChange(code);
-                if (origin !== 'setValue') {
-                    socketRef.current.emit(ACTIONS.CODE_CHANGE, {
-                        roomId,
-                        code,
-                    });
-                }
-            });
-        }
-        init();
-    }, []);
+    // When the editor mounts
+    function handleEditorDidMount(editor, monaco) {
+        editorRef.current = editor;
+        editor.focus();
+    }
 
-    useEffect(() => {
+    // Handle typing and emit to socket
+    const handleChange = (newValue) => {
+        setValue(newValue);
+        onCodeChange(newValue);
         if (socketRef.current) {
-            socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
-                if (code !== null) {
-                    editorRef.current.setValue(code);
-                }
+            socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+                roomId,
+                code: newValue,
             });
         }
+    };
+
+    // Receive updates from other users
+    useEffect(() => {
+        if (!socketRef.current) return;
+
+        const handleCodeChange = ({ code }) => {
+            if (code !== null && code !== value) {
+                setValue(code);
+            }
+        };
+
+        socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
 
         return () => {
-            socketRef.current.off(ACTIONS.CODE_CHANGE);
+            socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
         };
-    }, [socketRef.current]);
+    }, [socketRef.current, value]);
 
-    return <textarea id="realtimeEditor"></textarea>;
+    return (
+        <div style={{ height: '100vh', width: '100%' }}>
+            <MonacoEditor
+                height="100%"
+                language={language || 'javascript'}
+                theme="vs-dark"
+                value={value}
+                onMount={handleEditorDidMount}
+                onChange={handleChange}
+                options={{
+                    autoClosingBrackets: 'always',
+                    autoClosingQuotes: 'always',
+                    formatOnType: true,
+                    formatOnPaste: true,
+                    minimap: { enabled: true },
+                    scrollBeyondLastLine: false,
+                    fontSize: 15,
+                    wordWrap: 'on',
+                    automaticLayout: true,
+                }}
+            />
+        </div>
+    );
 };
 
 export default Editor;

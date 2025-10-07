@@ -18,10 +18,12 @@ const EditorPage = () => {
     const { roomId } = useParams();
     const reactNavigator = useNavigate();
     const [clients, setClients] = useState([]);
+    const [language, setLanguage] = useState('javascript');
 
     useEffect(() => {
         const init = async () => {
             socketRef.current = await initSocket();
+
             socketRef.current.on('connect_error', (err) => handleErrors(err));
             socketRef.current.on('connect_failed', (err) => handleErrors(err));
 
@@ -36,7 +38,7 @@ const EditorPage = () => {
                 username: location.state?.username,
             });
 
-            // Listening for joined event
+            // When a user joins
             socketRef.current.on(
                 ACTIONS.JOINED,
                 ({ clients, username, socketId }) => {
@@ -52,20 +54,20 @@ const EditorPage = () => {
                 }
             );
 
-            // Listening for disconnected
+            // When a user disconnects
             socketRef.current.on(
                 ACTIONS.DISCONNECTED,
                 ({ socketId, username }) => {
                     toast.success(`${username} left the room.`);
-                    setClients((prev) => {
-                        return prev.filter(
-                            (client) => client.socketId !== socketId
-                        );
-                    });
+                    setClients((prev) =>
+                        prev.filter((client) => client.socketId !== socketId)
+                    );
                 }
             );
         };
+
         init();
+
         return () => {
             socketRef.current.disconnect();
             socketRef.current.off(ACTIONS.JOINED);
@@ -111,7 +113,23 @@ const EditorPage = () => {
                             />
                         ))}
                     </div>
+
+                    <div className="languageSelector">
+                        <h4>Select Language</h4>
+                        <select
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                            className="langSelect"
+                        >
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="html">HTML</option>
+                        </select>
+                    </div>
                 </div>
+
                 <button className="btn copyBtn" onClick={copyRoomId}>
                     Copy ROOM ID
                 </button>
@@ -119,10 +137,12 @@ const EditorPage = () => {
                     Leave
                 </button>
             </div>
+
             <div className="editorWrap">
                 <Editor
                     socketRef={socketRef}
                     roomId={roomId}
+                    language={language}
                     onCodeChange={(code) => {
                         codeRef.current = code;
                     }}
